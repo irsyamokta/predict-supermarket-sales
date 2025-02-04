@@ -60,10 +60,17 @@ model_option = st.selectbox("Pilih Model Prediksi", ["KNN", "SVM"])
 y_pred = y_pred_knn if model_option == "KNN" else y_pred_svm
 rmse = rmse_knn if model_option == "KNN" else rmse_svm
 
+# Fungsi menghitung akurasi
 def accuracy(y_test, y_pred):
     return 1 - np.sqrt(np.mean((y_test - y_pred) ** 2)) / np.mean(y_test)
 
 model_accuracy = accuracy(y_test, y_pred) * 100
+
+# Menampilkan RMSE dan Akurasi Model
+st.subheader("Evaluasi Model")
+st.write(f"**Model yang dipilih: {model_option}**")
+st.write(f"📉 **RMSE: {rmse:.4f}**")
+st.write(f"✅ **Akurasi: {model_accuracy:.2f}%**")
 
 # Diagram Distribusi Label
 st.subheader("Distribusi Produk")
@@ -121,5 +128,3 @@ for bar in bars2:
                  xytext=(0, 5), textcoords="offset points", ha='center', fontsize=10, color='black')
 
 st.pyplot(fig2)
-
-
