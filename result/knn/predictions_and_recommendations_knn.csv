@@ -1,0 +1,7 @@
+Month,Average_Unit_Price,Product_Label,Product line,Predicted_Quantity,Recommended_Quantity
+4,53.63568100358423,0,Electronic accessories,321.6,354.0
+4,57.08620794753086,1,Fashion accessories,309.4,341.0
+4,56.06908026113671,2,Food and beverages,309.4,341.0
+4,54.96503385793677,3,Health and beauty,309.4,341.0
+4,55.33642840623215,4,Home and lifestyle,309.4,341.0
+4,57.384524436365155,5,Sports and travel,313.6,345.0
