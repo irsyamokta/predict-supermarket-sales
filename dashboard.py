@@ -16,7 +16,8 @@ data = load_data()
 st.title("Prediksi Penjualan Supermarket dengan KNN & SVM")
 
 # Menampilkan dataset awal
-st.write("Dataset Awal", data.head())
+st.subheader("Dataset Awal")
+st.write(data.head())
 
 # Visualisasi distribusi produk
 st.subheader("Distribusi Produk")
@@ -29,7 +30,8 @@ plt.xticks(rotation=45)
 st.pyplot(fig)
 
 # Pilihan model
-model_option = st.selectbox("Pilih Model untuk Menampilkan Hasil", ["KNN", "SVM"])
+st.subheader("Pilih Model untuk Menampilkan Hasil")
+model_option = st.selectbox("Model",["KNN", "SVM"])
 
 # Membaca hasil prediksi dan rekomendasi dari file CSV berdasarkan pilihan model
 if model_option == "KNN":
