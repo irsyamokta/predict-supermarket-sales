@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.svm import SVR
 from sklearn.metrics import mean_squared_error
@@ -13,39 +13,65 @@ def load_data():
     data = pd.read_csv("dataset/supermarket_sales - Sheet1.csv")
     data['Date'] = pd.to_datetime(data['Date'])
     data['Month'] = data['Date'].dt.month
+    data['Year'] = data['Date'].dt.year
     return data
-
-data = load_data()
 
 # Preprocessing
 def preprocess_data(data):
-    data.dropna(inplace=True)
+    # Tangani missing value
+    data = data.copy()
+    for column in data.columns:
+        if data[column].dtype == 'object':
+            data[column].fillna(data[column].mode()[0], inplace=True)
+        else:
+            data[column].fillna(data[column].mean(), inplace=True)
+    
+    # Hapus duplikat
     data.drop_duplicates(inplace=True)
-    le = LabelEncoder()
-    data['Product_Label'] = le.fit_transform(data['Product line'])
-    grouped_data = data.groupby(['Month', 'Product_Label'])['Quantity'].sum().reset_index()
-    return grouped_data, le
+    
+    # Grouping seperti di notebook
+    grouped_data = data.groupby(['Product line', 'Month']).agg(
+        Total_Quantity=('Quantity', 'sum'),
+        Average_Unit_Price=('Unit price', 'mean')
+    ).reset_index()
+    
+    return grouped_data
 
-df, label_encoder = preprocess_data(data)
+# Function untuk menghitung metrics yang konsisten dengan notebook
+def calculate_metrics(y_true, y_pred):
+    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    accuracy = (1 - rmse/np.mean(y_true)) * 100
+    return rmse, accuracy
 
-# Train-test split
-X = df[['Month', 'Product_Label']]
-y = df['Quantity']
+# Load data
+data = load_data()
+
+# Preprocessing
+df = preprocess_data(data)
+
+# Prepare features
+X = df[['Month', 'Average_Unit_Price']]
+y = df['Total_Quantity']
+
+# Normalization
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
+
+# Split data
 X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
-# Model KNN
+# Train models dengan parameter yang sama seperti notebook
 knn = KNeighborsRegressor(n_neighbors=5)
 knn.fit(X_train, y_train)
 y_pred_knn = knn.predict(X_test)
-rmse_knn = np.sqrt(mean_squared_error(y_test, y_pred_knn))
 
-# Model SVM
-svm = SVR()
+svm = SVR(kernel='rbf')
 svm.fit(X_train, y_train)
 y_pred_svm = svm.predict(X_test)
-rmse_svm = np.sqrt(mean_squared_error(y_test, y_pred_svm))
+
+# Calculate metrics
+rmse_knn, accuracy_knn = calculate_metrics(y_test, y_pred_knn)
+rmse_svm, accuracy_svm = calculate_metrics(y_test, y_pred_svm)
 
 # Streamlit UI
 st.title("Prediksi Penjualan Supermarket dengan KNN & SVM")
@@ -56,48 +82,61 @@ st.write("Dataset Awal", data.head())
 # Pilih model
 model_option = st.selectbox("Pilih Model Prediksi", ["KNN", "SVM"])
 
-# Prediksi
-y_pred = y_pred_knn if model_option == "KNN" else y_pred_svm
-rmse = rmse_knn if model_option == "KNN" else rmse_svm
+# Prediksi dan evaluasi
+if model_option == "KNN":
+    rmse = rmse_knn
+    accuracy_value = accuracy_knn
+else:
+    rmse = rmse_svm
+    accuracy_value = accuracy_svm
 
-# Fungsi menghitung akurasi
-def accuracy(y_test, y_pred):
-    return 1 - np.sqrt(np.mean((y_test - y_pred) ** 2)) / np.mean(y_test)
-
-model_accuracy = accuracy(y_test, y_pred) * 100
-
-# Menampilkan RMSE dan Akurasi Model
+# Menampilkan hasil RMSE dan Akurasi Model
 st.subheader("Evaluasi Model")
 st.write(f"**Model yang dipilih: {model_option}**")
 st.write(f"📉 **RMSE: {rmse:.4f}**")
-st.write(f"✅ **Akurasi: {model_accuracy:.2f}%**")
+st.write(f"✅ **Akurasi: {accuracy_value:.2f}%**")
 
-# Diagram Distribusi Label
+# Visualisasi Distribusi Produk
 st.subheader("Distribusi Produk")
 fig, ax = plt.subplots(figsize=(8, 6))
 data['Product line'].value_counts().plot(kind='bar', color='skyblue', ax=ax)
-ax.set_title("Distribusi Label Produk")
+ax.set_title("Distribusi Produk")
 ax.set_xlabel("Product Line")
-ax.set_ylabel("Count")
+ax.set_ylabel("Jumlah Penjualan")
 plt.xticks(rotation=45)
 st.pyplot(fig)
 
-# Menambahkan bulan berikutnya untuk prediksi
+# Prediksi untuk bulan berikutnya
 next_month = df['Month'].max() + 1 if df['Month'].max() < 12 else 1
 future_data = pd.DataFrame({
-    'Month': [next_month] * df['Product_Label'].nunique(),
-    'Product_Label': df['Product_Label'].unique()
+    'Month': [next_month] * len(df['Product line'].unique()),
+    'Product line': df['Product line'].unique()
 })
 
-# Normalisasi data sebelum prediksi
-future_data_scaled = scaler.transform(future_data)
-future_data['Predicted_Quantity'] = knn.predict(future_data_scaled) if model_option == "KNN" else svm.predict(future_data_scaled)
+# Membuat label encoder yang konsisten
+product_line_encoder = {label: idx for idx, label in enumerate(df['Product line'].unique())}
+
+# Prediksi untuk bulan berikutnya
+next_month = df['Month'].max() + 1 if df['Month'].max() < 12 else 1
+future_data = pd.DataFrame({
+    'Month': [next_month] * len(df['Product line'].unique()),
+    'Product line': df['Product line'].unique(),
+    'Average_Unit_Price': df.groupby('Product line')['Average_Unit_Price'].mean().values
+})
+
+# Persiapkan fitur untuk prediksi
+X_future = future_data[['Month', 'Average_Unit_Price']]
+future_data_scaled = scaler.transform(X_future)
+
+# Prediksi untuk bulan berikutnya
+if model_option == "KNN":
+    future_data['Predicted_Quantity'] = knn.predict(future_data_scaled)
+else:
+    future_data['Predicted_Quantity'] = svm.predict(future_data_scaled)
+
 future_data['Recommended_Quantity'] = np.ceil(future_data['Predicted_Quantity'] * 1.1)
 
-# Konversi label kembali ke nama produk
-future_data['Product line'] = label_encoder.inverse_transform(future_data['Product_Label'])
-
-# Grafik Prediksi Penjualan (Atas)
+# Visualisasi Prediksi dan Rekomendasi
 st.subheader("Prediksi Penjualan Bulan Depan")
 fig1, ax1 = plt.subplots(figsize=(10, 6))
 bars1 = ax1.bar(future_data['Product line'], future_data['Predicted_Quantity'], color='blue')
@@ -113,7 +152,7 @@ for bar in bars1:
 
 st.pyplot(fig1)
 
-# Grafik Rekomendasi Restock (Bawah)
+# Rekomendasi Restock
 st.subheader("Rekomendasi Restock")
 fig2, ax2 = plt.subplots(figsize=(10, 6))
 bars2 = ax2.bar(future_data['Product line'], future_data['Recommended_Quantity'], color='orange')
