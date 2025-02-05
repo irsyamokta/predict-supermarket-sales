@@ -46,11 +46,32 @@ st.title("Prediksi Penjualan Supermarket dengan KNN & SVM")
 st.sidebar.header("Upload Dataset Anda")
 uploaded_file = st.sidebar.file_uploader("Upload CSV file", type=["csv"])
 
+# fitur unduhan template CSV di sidebar
+st.sidebar.subheader("Unduh Template CSV")
+
+import os
+
+# Pastikan file template.csv tersedia
+template_path = "dataset/template_dataset.csv"
+
+if os.path.exists(template_path):
+    with open(template_path, "rb") as file:
+        st.sidebar.download_button(
+            label="Download Template CSV",
+            data=file,
+            file_name="template_dataset.csv",
+            mime="text/csv"
+        )
+else:
+    st.sidebar.error("File template_dataset.csv tidak ditemukan.")
+
 if uploaded_file is not None:
     data = load_data(uploaded_file)
 else:
     st.warning("Silakan unggah file CSV untuk melanjutkan.")
     st.stop()
+
+
 
 st.write("Dataset Awal", data.head())
 df = preprocess_data(data)
@@ -150,3 +171,5 @@ for bar in bars2:
     ax2.annotate(f'{height:.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
                  xytext=(0, 5), textcoords="offset points", ha='center', fontsize=10, color='black')
 st.pyplot(fig2)
+
+
