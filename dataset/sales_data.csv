@@ -1,0 +1,8 @@
+Invoice ID,Branch,City,Customer type,Gender,Product line,Unit price,Quantity,Tax 5%,Total,Date,Time,Payment,cogs,gross margin percentage,gross income,Rating
+A001,A,City1,Member,Female,Food,10.0,1,0.5,10.5,2023-01-01,10:00,Cash,10.0,5.0,0.5,4.5
+A002,B,City2,Normal,Male,Beverages,15.0,2,0.75,30.75,2023-01-02,11:00,Credit,30.0,5.0,0.75,4.0
+A003,A,City1,Member,,Food,10.0,1,0.5,10.5,2023-01-03,12:00,Cash,10.0,5.0,0.5,5.0
+A004,B,City2,Normal,Female,Beverages,20.0,3,1.0,61.0,2023-01-04,13:00,Credit,60.0,5.0,1.0,3.5
+A005,A,City1,Member,,Snacks,,2,0.0,0.0,2023-01-05,14:00,Cash,0.0,0.0,0.0,4.0
+A006,C,City3,Normal,Male,Cosmetics,25.0,1,1.25,26.25,2023-01-06,15:00,Ewallet,25.0,5.0,1.25,4.8
+A007,A,City1,Member,Female,Clothing,30.0,2,3.0,63.0,2023-01-07,16:00,Cash,60.0,5.0,3.0,5.0
