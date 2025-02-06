@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import pickle
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsRegressor
-from sklearn.svm import SVR
 from sklearn.metrics import mean_squared_error
+import os
 
 def load_data(file):
     data = pd.read_csv(file)
@@ -39,19 +40,15 @@ def preprocess_data(data):
 
 def calculate_metrics(y_true, y_pred):
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-    accuracy = (1 - rmse/np.mean(y_true)) * 100
+    accuracy = (1 - rmse / np.mean(y_true)) * 100
     return rmse, accuracy
 
-st.title("Prediksi Penjualan Supermarket dengan KNN & SVM")
+st.title("Prediksi Penjualan Supermarket")
 st.sidebar.header("Upload Dataset Anda")
 uploaded_file = st.sidebar.file_uploader("Upload CSV file", type=["csv"])
 
-# fitur unduhan template CSV di sidebar
+# Unduh template CSV
 st.sidebar.subheader("Unduh Template CSV")
-
-import os
-
-# Pastikan file template.csv tersedia
 template_path = "dataset/template_dataset.csv"
 
 if os.path.exists(template_path):
@@ -71,9 +68,6 @@ else:
     st.warning("Silakan unggah file CSV untuk melanjutkan.")
     st.stop()
 
-
-
-st.write("Dataset Awal", data.head())
 df = preprocess_data(data)
 
 if df.empty:
@@ -98,24 +92,16 @@ knn = KNeighborsRegressor(n_neighbors=n_neighbors)
 knn.fit(X_train, y_train)
 y_pred_knn = knn.predict(X_test)
 
-svm = SVR(kernel='rbf')
-svm.fit(X_train, y_train)
-y_pred_svm = svm.predict(X_test)
-
 rmse_knn, accuracy_knn = calculate_metrics(y_test, y_pred_knn)
-rmse_svm, accuracy_svm = calculate_metrics(y_test, y_pred_svm)
 
-model_option = st.selectbox("Pilih Model Prediksi", ["KNN", "SVM"])
+# Simpan trained model menggunakan pickle
+model_path = "trained_knn_model.pkl"
+with open(model_path, 'wb') as model_file:
+    pickle.dump(knn, model_file)
 
-if model_option == "KNN":
-    rmse = rmse_knn
-    accuracy_value = accuracy_knn
-    model = knn
-else:
-    rmse = rmse_svm
-    accuracy_value = accuracy_svm
-    model = svm
+st.success("Model KNN berhasil dilatih dan disimpan.")
 
+# Visualisasi Distribusi Produk
 st.subheader("Distribusi Produk")
 fig, ax = plt.subplots(figsize=(8, 6))
 product_counts = data['Product line'].value_counts()
@@ -135,6 +121,7 @@ for bar in ax.patches:
 
 st.pyplot(fig)
 
+# Prediksi Penjualan Bulan Depan
 next_month = df['Month'].max() + 1 if df['Month'].max() < 12 else 1
 future_data = pd.DataFrame({
     'Month': [next_month] * len(df['Product line'].unique()),
@@ -145,31 +132,38 @@ future_data = pd.DataFrame({
 X_future = future_data[['Month', 'Average_Unit_Price']]
 future_data_scaled = scaler.transform(X_future)
 
-future_data['Predicted_Quantity'] = model.predict(future_data_scaled)
+future_data['Predicted_Quantity'] = knn.predict(future_data_scaled)
 future_data['Recommended_Quantity'] = np.ceil(future_data['Predicted_Quantity'] * 1.1)
 
-st.subheader("Prediksi Penjualan Bulan Depan")
-fig1, ax1 = plt.subplots(figsize=(10, 6))
-bars1 = ax1.bar(future_data['Product line'], future_data['Predicted_Quantity'], color='blue')
-ax1.set_xlabel("Product Line")
-ax1.set_ylabel("Prediksi Quantity")
-ax1.tick_params(axis='x', rotation=45)
-for bar in bars1:
-    height = bar.get_height()
-    ax1.annotate(f'{height:.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
-                 xytext=(0, 5), textcoords="offset points", ha='center', fontsize=10, color='black')
-st.pyplot(fig1)
+st.subheader("Prediksi Penjualan dan Rekomendasi Restock")
+fig, ax = plt.subplots(figsize=(10, 6))
 
-st.subheader("Rekomendasi Restock")
-fig2, ax2 = plt.subplots(figsize=(10, 6))
-bars2 = ax2.bar(future_data['Product line'], future_data['Recommended_Quantity'], color='orange')
-ax2.set_xlabel("Product Line")
-ax2.set_ylabel("Recommended Quantity")
-ax2.tick_params(axis='x', rotation=45)
-for bar in bars2:
-    height = bar.get_height()
-    ax2.annotate(f'{height:.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
-                 xytext=(0, 5), textcoords="offset points", ha='center', fontsize=10, color='black')
-st.pyplot(fig2)
+# Tentukan lebar bar
+bar_width = 0.35
+index = np.arange(len(future_data['Product line']))
 
+# Bar Predicted Quantity
+bars1 = ax.bar(index, future_data['Predicted_Quantity'], bar_width, label='Predicted Quantity', color='blue')
 
+# Bar Recommended Quantity (disandingkan)
+bars2 = ax.bar(index + bar_width, future_data['Recommended_Quantity'], bar_width, label='Recommended Quantity', color='orange')
+
+# Tambahkan label dan judul
+ax.set_xlabel("Product Line")
+ax.set_ylabel("Quantity")
+ax.set_title("Prediksi dan Rekomendasi Restock")
+ax.set_xticks(index + bar_width / 2)
+ax.set_xticklabels(future_data['Product line'], rotation=30, ha='right')
+ax.legend(loc='lower right')
+
+# Tambahkan label nilai di atas setiap bar
+for bar_group in (bars1, bars2):
+    for bar in bar_group:
+        height = bar.get_height()
+        ax.annotate(f'{height:.0f}',
+                    xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 5),
+                    textcoords="offset points",
+                    ha='center', fontsize=10, color='black')
+
+st.pyplot(fig)
